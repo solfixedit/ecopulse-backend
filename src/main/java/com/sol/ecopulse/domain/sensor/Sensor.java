@@ -3,11 +3,13 @@ package com.sol.ecopulse.domain.sensor;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.locationtech.jts.geom.Point; // PostGIS 공간 정보 라이브러리
 
 @Entity
 @Table(name = "sensors")
 @Getter
+@Setter
 @NoArgsConstructor
 public class Sensor {
 
