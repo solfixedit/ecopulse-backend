@@ -8,7 +8,7 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_USER: sol
-      POSTGRES_PASSWORD: password123
+      POSTGRES_PASSWORD: ecopulse
       POSTGRES_DB: ecopulse
     volumes:
       - postgres_data:/var/lib/postgresql/data

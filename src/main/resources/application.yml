@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    # 1. 도커 컴포즈에 지정했던 정확한 비밀번호로 연동합니다.
+    url: jdbc:postgresql://localhost:5432/ecopulse
+    username: sol
+    password: ecopulse  # 만약 도커 컴포즈 파일에 다르게 적으셨다면 그 비밀번호를 입력해야 합니다!
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        # 2. ★ 중요: 아래 dialect 설정 줄을 아예 '삭제'하거나 주석 처리하세요!
+        # 최신 스프링 부트와 하이버네이트는 드라이버만 보고 자동으로 PostGIS 방언을 채택합니다.
+        # 옛날 방식의 설정을 넣으면 오히려 클래스를 찾지 못해 에러가 납니다.
