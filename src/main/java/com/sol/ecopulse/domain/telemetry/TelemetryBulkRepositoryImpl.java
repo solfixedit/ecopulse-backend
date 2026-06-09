@@ -1,6 +1,7 @@
-package com.sol.ecopulse.repository.telemetry;
+package com.sol.ecopulse.domain.telemetry;
 
 import com.sol.ecopulse.domain.telemetry.Telemetry;
+import com.sol.ecopulse.repository.telemetry.TelemetryBulkRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
