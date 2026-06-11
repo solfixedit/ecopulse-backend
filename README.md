@@ -44,3 +44,23 @@ ecopulse-backend/
 │   └── controller/             # RESTful APIs for Data Ingestion & Analytics
 └── src/main/resources/
     └── application.yml
+```
+
+---
+
+## 🛠️ Data Ingestion Pipeline (Python & Temporal.io)
+
+> **💡 Architecture Note**
+> The Python data pipeline module in this project was highly inspired by the "Django + Temporal.io" architecture session at the **Toronto Python Meetup**. It was designed and introduced to experiment with a production-grade, fault-tolerant data pipeline that ensures resilient IoT telemetry ingestion, independent of core backend downtime.
+
+### Architecture Overview
+- **Core Backend**: Java, Spring Boot, PostGIS, PostgreSQL (Manages spatial-temporal data and provides core APIs)
+- **Data Ingestion**: Python 3, Temporal.io (Orchestrates virtual IoT sensor data generation and guarantees reliable HTTP delivery via distributed workflow retries)
+
+### Directory Structure
+```text
+ecopulse-backend/
+├── src/main/java/...      # Core Spring Boot Application
+└── ecopulse-pipeline/     # Python Data Pipeline Module (Temporal.io Worker)
+    ├── pipeline.py        # Workflow & Activity definitions for data streaming
+    └── run.py             # Worker initialization & Workflow execution trigger
