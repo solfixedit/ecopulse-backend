@@ -5,13 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.locationtech.jts.geom.Point; 
 import java.time.LocalDateTime;
 
 @Builder
 @AllArgsConstructor
 @Entity
 @Table(name = "telemetries", indexes = {
-        @Index(name = "idx_sensor_timestamp", columnList = "sensor_id, timestamp") // 복합 인덱스 설계
+        @Index(name = "idx_sensor_timestamp", columnList = "sensor_id, timestamp")
 })
 @Getter
 @NoArgsConstructor
@@ -29,4 +30,8 @@ public class Telemetry {
 
     @Column(nullable = false)
     private LocalDateTime timestamp;
+
+    // 🎯 PostGIS geometry(Point, 4326) 매핑 설정 (WGS84 공간 좌표계)
+    @Column(columnDefinition = "geometry(Point, 4326)")
+    private Point location;
 }

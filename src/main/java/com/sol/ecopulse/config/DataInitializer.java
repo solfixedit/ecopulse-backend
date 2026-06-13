@@ -60,7 +60,7 @@ public class DataInitializer implements CommandLineRunner {
             // 1시간 간격으로 과거 데이터가 쌓이도록 타임스탬프 조절
             LocalDateTime timestamp = now.minusHours(i);
 
-            TelemetryRequest request = new TelemetryRequest(sensorId, randomValue, timestamp);
+            TelemetryRequest request = new TelemetryRequest(sensorId, randomValue, timestamp, 43.76, -79.41);
             telemetryService.saveTelemetry(request);
         }
     }

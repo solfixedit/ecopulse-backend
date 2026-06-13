@@ -5,5 +5,7 @@ import java.time.LocalDateTime;
 public record TelemetryRequest(
         Long sensorId,
         Double value,
-        LocalDateTime timestamp
+        LocalDateTime timestamp,
+        Double latitude,
+        Double longitude  
 ) {}
