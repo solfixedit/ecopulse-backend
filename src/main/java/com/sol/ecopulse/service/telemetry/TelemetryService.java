@@ -51,4 +51,14 @@ public class TelemetryService {
     public List<Telemetry> getTelemetryHistory(Long sensorId) {
         return telemetryRepository.findBySensorIdOrderByTimestampDesc(sensorId);
     }
+
+    /**
+     * 🎯 기준 위경도 기반 반경 내 텔레메트리 데이터 조회
+     */
+    public List<Telemetry> getTelemetriesNearby(double latitude, double longitude, double distanceInMeters) {
+        // 위경도 좌표계(4326)를 사용하여 중심점 Point 객체 생성 (X=경도, Y=위도)
+        Point centerPoint = geometryFactory.createPoint(new org.locationtech.jts.geom.Coordinate(longitude, latitude));
+
+        return telemetryRepository.findNearbyTelemetries(centerPoint, distanceInMeters);
+    }
 }

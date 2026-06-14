@@ -38,4 +38,22 @@ public class TelemetryController {
 
         return ResponseEntity.ok(responseList);
     }
+
+    /**
+     * 🎯 위치 기반 반경 검색 API
+     * 예시: GET /api/telemetries/nearby?lat=43.756&lon=-79.417&radius=5000 (반경 5km)
+     */
+    @GetMapping("/nearby")
+    public ResponseEntity<List<TelemetryResponse>> getNearbyTelemetries(
+            @RequestParam("lat") double lat,
+            @RequestParam("lon") double lon,
+            @RequestParam(value = "radius", defaultValue = "5000") double radiusInMeters // 기본값 5km
+    ) {
+        List<TelemetryResponse> responses = telemetryService.getTelemetriesNearby(lat, lon, radiusInMeters)
+                .stream()
+                .map(TelemetryResponse::from)
+                .toList();
+
+        return ResponseEntity.ok(responses);
+    }
 }
