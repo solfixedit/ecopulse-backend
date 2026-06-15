@@ -1,9 +1,8 @@
-version: '3.8'
-
 services:
   db:
-    image: postgis/postgis:15-3.3 # PostGIS가 미리 설치된 공식 이미지 사용
+    image: postgis/postgis:15-3.3
     container_name: ecopulse-postgres
+    platform: linux/amd64
     ports:
       - "5432:5432"
     environment:
@@ -12,6 +11,42 @@ services:
       POSTGRES_DB: ecopulse
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sol -d ecopulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  temporal:
+    image: temporalio/auto-setup:1.25.2
+    container_name: ecopulse-temporal
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "7233:7233"
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_SEEDS: db
+      POSTGRES_USER: sol
+      POSTGRES_PWD: ecopulse
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
+    volumes:
+      - ./temporal/dynamicconfig:/etc/temporal/config/dynamicconfig
+    restart: unless-stopped
+
+  temporal-ui:
+    image: temporalio/ui:2.31.2
+    container_name: ecopulse-temporal-ui
+    depends_on:
+      - temporal
+    ports:
+      - "8088:8080"
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:3000
+    restart: unless-stopped
 
 volumes:
   postgres_data:
