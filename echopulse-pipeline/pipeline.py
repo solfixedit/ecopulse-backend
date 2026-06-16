@@ -1,4 +1,5 @@
 import asyncio
+import os
 from datetime import datetime, timedelta  # 🎯 timedelta를 여기서 가져옵니다!
 from dataclasses import dataclass
 from temporalio import activity, workflow
@@ -16,7 +17,8 @@ async def send_telemetry_to_springboot(sensor_id: int) -> str:
     import requests
     import random
 
-    url = "http://localhost:8080/api/telemetries"
+    base_url = os.getenv("SPRING_BOOT_BASE_URL", "http://localhost:8080")
+    url = f"{base_url}/api/telemetries"
 
     # 기본 환경 데이터 생성
     fake_value = round(random.uniform(20.0, 30.0), 1)

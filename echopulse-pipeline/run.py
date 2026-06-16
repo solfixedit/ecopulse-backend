@@ -1,11 +1,13 @@
 import asyncio
+import os
 from temporalio.client import Client
 from temporalio.worker import Worker
 from pipeline import EcopulseDataWorkflow, send_telemetry_to_springboot
 
 async def main():
     # 1. 로컬에 띄운 Temporal 서버에 연결
-    client = await Client.connect("localhost:7233")
+    temporal_address = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
+    client = await Client.connect(temporal_address)
 
     # 2. 워크플로우와 액티비티를 등록한 일꾼(Worker) 생성
     worker = Worker(

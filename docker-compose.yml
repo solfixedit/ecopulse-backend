@@ -48,5 +48,18 @@ services:
       TEMPORAL_CORS_ORIGINS: http://localhost:3000
     restart: unless-stopped
 
+  pipeline-worker:
+    profiles:
+      - worker
+    build:
+      context: ./echopulse-pipeline
+    container_name: ecopulse-pipeline-worker
+    depends_on:
+      - temporal
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      SPRING_BOOT_BASE_URL: http://host.docker.internal:8080
+    restart: "no"
+
 volumes:
   postgres_data:
