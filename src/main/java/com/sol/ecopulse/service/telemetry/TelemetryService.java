@@ -3,10 +3,10 @@ package com.sol.ecopulse.service.telemetry;
 import com.sol.ecopulse.domain.telemetry.Telemetry;
 import com.sol.ecopulse.dto.TelemetryRequest;
 import com.sol.ecopulse.repository.telemetry.TelemetryRepository;
-import org.locationtech.jts.geom.Coordinate; // 🎯 추가
-import org.locationtech.jts.geom.GeometryFactory; // 🎯 추가
-import org.locationtech.jts.geom.Point; // 🎯 추가
-import org.locationtech.jts.geom.PrecisionModel; // 🎯 추가
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,45 +18,44 @@ import java.util.List;
 public class TelemetryService {
 
     private final TelemetryRepository telemetryRepository;
-    // 🎯 공간 데이터 인스턴스를 일관되게 찍어낼 싱글톤 패턴 스타일의 팩토리 정의 (WGS84: 4326)
+    // Shared factory for WGS84 geometry objects.
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
     public TelemetryService(TelemetryRepository telemetryRepository) {
         this.telemetryRepository = telemetryRepository;
     }
 
-    // 측정 데이터 저장 (PostGIS Point 결합 가공 추가)
+    // Save telemetry with an optional PostGIS location.
     @Transactional
     public Telemetry saveTelemetry(TelemetryRequest request) {
         LocalDateTime requestTime = request.timestamp() != null ? request.timestamp() : LocalDateTime.now();
 
-        // 🎯 1. 파이썬이 던진 위경도로 JTS Point 객체 조립 (순서 주의: Longitude가 X, Latitude가 Y)
+        // Build a JTS point from the incoming coordinates. Longitude is X, latitude is Y.
         Point point = null;
         if (request.latitude() != null && request.longitude() != null) {
             point = geometryFactory.createPoint(new Coordinate(request.longitude(), request.latitude()));
         }
 
-        // 🎯 2. 빌더 패턴에 location 데이터 주입
         Telemetry telemetry = Telemetry.builder()
                 .sensorId(request.sensorId())
                 .value(request.value())
                 .timestamp(requestTime)
-                .location(point) // 👈 추가된 PostGIS 필드
+                .location(point)
                 .build();
 
         return telemetryRepository.save(telemetry);
     }
 
-    // 특정 센서의 히스토리 조회
+    // Fetch telemetry history for a sensor, ordered from newest to oldest.
     public List<Telemetry> getTelemetryHistory(Long sensorId) {
         return telemetryRepository.findBySensorIdOrderByTimestampDesc(sensorId);
     }
 
     /**
-     * 🎯 기준 위경도 기반 반경 내 텔레메트리 데이터 조회
+     * Find telemetry records within a radius from the given coordinates.
      */
     public List<Telemetry> getTelemetriesNearby(double latitude, double longitude, double distanceInMeters) {
-        // 위경도 좌표계(4326)를 사용하여 중심점 Point 객체 생성 (X=경도, Y=위도)
+        // Create the center point using WGS84 coordinates. Longitude is X, latitude is Y.
         Point centerPoint = geometryFactory.createPoint(new org.locationtech.jts.geom.Coordinate(longitude, latitude));
 
         return telemetryRepository.findNearbyTelemetries(centerPoint, distanceInMeters);

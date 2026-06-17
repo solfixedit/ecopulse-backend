@@ -21,9 +21,9 @@ public class Sensor {
     private String name;
 
     @Column(nullable = false)
-    private String type; // 예: WATER_LEVEL, TEMPERATURE
+    private String type; // Example: WATER_LEVEL, TEMPERATURE
 
-    // PostGIS 기하학적 포인트 타입 (위경도 저장 및 공간 인덱싱용)
+    // PostGIS point used for coordinates and spatial indexing.
     @Column(columnDefinition = "geometry(Point, 4326)")
     private Point location;
 }

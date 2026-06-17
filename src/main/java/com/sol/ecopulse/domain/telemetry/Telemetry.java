@@ -31,7 +31,7 @@ public class Telemetry {
     @Column(nullable = false)
     private LocalDateTime timestamp;
 
-    // 🎯 PostGIS geometry(Point, 4326) 매핑 설정 (WGS84 공간 좌표계)
+    // PostGIS point stored in WGS84 coordinates.
     @Column(columnDefinition = "geometry(Point, 4326)")
     private Point location;
 }

@@ -20,14 +20,14 @@ public class TelemetryController {
         this.telemetryService = telemetryService;
     }
 
-    // 1. 특정 센서의 환경 측정값 등록 API (POST /api/telemetries)
+    // Create a telemetry reading for a sensor.
     @PostMapping
     public ResponseEntity<TelemetryResponse> createTelemetry(@RequestBody TelemetryRequest request) {
         Telemetry savedTelemetry = telemetryService.saveTelemetry(request);
         return ResponseEntity.ok(TelemetryResponse.from(savedTelemetry));
     }
 
-    // 2. 특정 센서의 누적 데이터 조회 API (GET /api/telemetries/sensor/{sensorId})
+    // Get telemetry history for a sensor.
     @GetMapping("/sensor/{sensorId}")
     public ResponseEntity<List<TelemetryResponse>> getTelemetryBySensor(@PathVariable Long sensorId) {
         List<Telemetry> telemetries = telemetryService.getTelemetryHistory(sensorId);
@@ -40,8 +40,10 @@ public class TelemetryController {
     }
 
     /**
-     * 🎯 위치 기반 반경 검색 API
-     * 예시: GET /api/telemetries/nearby?lat=43.756&lon=-79.417&radius=5000 (반경 5km)
+     * Search telemetry readings within a radius from the given coordinates.
+     *
+     * Example:
+     * GET /api/telemetries/nearby?lat=43.756&lon=-79.417&radius=5000
      */
     @GetMapping("/nearby")
     public ResponseEntity<List<TelemetryResponse>> getNearbyTelemetries(

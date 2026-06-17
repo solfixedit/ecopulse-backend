@@ -4,14 +4,14 @@ from datetime import datetime, timedelta  # 🎯 timedelta를 여기서 가져�
 from dataclasses import dataclass
 from temporalio import activity, workflow
 
-# 1. 자바 백엔드로 보낼 요청 데이터 구조 정의
+# Payload sent to the Java backend.
 @dataclass
 class TelemetryPayload:
     sensorId: int
     value: float
     timestamp: str
 
-# 2. 데이터 생성과 전송을 모두 담당하는 Activity (수정본)
+# Activity that generates sample telemetry and sends it to Spring Boot.
 @activity.defn
 async def send_telemetry_to_springboot(sensor_id: int) -> str:
     import requests
@@ -20,16 +20,16 @@ async def send_telemetry_to_springboot(sensor_id: int) -> str:
     base_url = os.getenv("SPRING_BOOT_BASE_URL", "http://localhost:8080")
     url = f"{base_url}/api/telemetries"
 
-    # 기본 환경 데이터 생성
+    # Generate a sample environmental reading.
     fake_value = round(random.uniform(20.0, 30.0), 1)
     current_time = datetime.now().isoformat()
 
-    # 🎯 [추가] 노스요크(North York) 부근의 가상 GPS 좌표 생성
+    # Generate sample GPS coordinates near North York.
     # 위도(Latitude): 약 43.75 ~ 43.77, 경도(Longitude): 약 -79.42 ~ -79.40
     fake_lat = round(random.uniform(43.750, 43.770), 6)
     fake_lon = round(random.uniform(-79.420, -79.400), 6)
 
-    # 🎯 자바 백엔드 DTO 매핑명(latitude, longitude)과 정확히 일치시켜 딕셔너리에 추가합니다.
+    # Match the field names expected by the Java request DTO.
     data = {
                "sensorId": sensor_id,
                "value": fake_value,
@@ -41,7 +41,7 @@ async def send_telemetry_to_springboot(sensor_id: int) -> str:
     try:
         response = requests.post(url, json=data, timeout=5)
         if response.status_code == 200:
-            # 로그에 좌표도 같이 찍히도록 가볍게 수정
+            # Include coordinates in the activity result for easier debugging.
             return f"Success: Sent value {fake_value} at ({fake_lat}, {fake_lon}) to Sensor {sensor_id}"
         else:
             raise Exception(f"Spring Boot returned status code {response.status_code}")
@@ -49,7 +49,7 @@ async def send_telemetry_to_springboot(sensor_id: int) -> str:
         print(f"[Activity Error] 스프링 부트 연결 실패. 재시도 대기 중... Reason: {e}")
         raise e
 
-# 3. 오직 흐름(시간차 제어)만 관리하는 결정적(Deterministic) Workflow
+# Workflow that controls the timing of telemetry delivery.
 @workflow.defn
 class EcopulseDataWorkflow:
     @workflow.run
@@ -64,7 +64,7 @@ class EcopulseDataWorkflow:
             )
             results.append(result)
 
-            # 3초 대기 후 다음 루프 실행
+            # Wait before sending the next sample.
             await workflow.sleep(timedelta(seconds=3))  # 🎯 여기도 바로 timedelta 적용!
 
         return results

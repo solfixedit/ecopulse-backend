@@ -12,12 +12,13 @@ import java.util.List;
 @Repository
 public interface TelemetryRepository extends JpaRepository<Telemetry, Long> {
 
-    // 복합 인덱스(sensor_id, timestamp)를 타서 최신 측정값부터 아주 빠르게 정렬해오는 메서드
+    // Uses the sensor_id and timestamp index to return the latest readings first.
     List<Telemetry> findBySensorIdOrderByTimestampDesc(Long sensorId);
     /**
-     * 🎯 PostGIS 반경 기반 공간 쿼리
-     * ST_DistanceSphere: 두 지점 간의 대원 거리(지구 곡률 반영)를 미터(m) 단위로 계산합니다.
-     * 엔티티의 location과 입력받은 중심점(center) 간의 거리가 distanceInMeters 이하인 데이터만 필터링합니다.
+     * Finds telemetry records within the given radius using PostGIS.
+     *
+     * ST_DistanceSphere calculates the distance between two points in meters,
+     * taking the Earth's curvature into account.
      */
     @Query(value = "SELECT * FROM telemetries t " +
             "WHERE ST_DistanceSphere(t.location, :center) <= :distanceInMeters " +
