@@ -4,7 +4,12 @@ import com.sol.ecopulse.domain.telemetry.Telemetry;
 import com.sol.ecopulse.dto.TelemetryRequest;
 import com.sol.ecopulse.dto.TelemetryResponse;
 import com.sol.ecopulse.service.telemetry.TelemetryService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,8 +26,9 @@ public class TelemetryController {
     }
 
     // Create a telemetry reading for a sensor.
+    @Validated
     @PostMapping
-    public ResponseEntity<TelemetryResponse> createTelemetry(@RequestBody TelemetryRequest request) {
+    public ResponseEntity<TelemetryResponse> createTelemetry(@Valid @RequestBody TelemetryRequest request) {
         Telemetry savedTelemetry = telemetryService.saveTelemetry(request);
         return ResponseEntity.ok(TelemetryResponse.from(savedTelemetry));
     }
@@ -49,7 +55,9 @@ public class TelemetryController {
     public ResponseEntity<List<TelemetryResponse>> getNearbyTelemetries(
             @RequestParam("lat") double lat,
             @RequestParam("lon") double lon,
-            @RequestParam(value = "radius", defaultValue = "5000") double radiusInMeters // 기본값 5km
+            @RequestParam(value = "radius", defaultValue = "5000")
+            @Positive(message = "반경은 양수여야 합니다.")
+            double radiusInMeters
     ) {
         List<TelemetryResponse> responses = telemetryService.getTelemetriesNearby(lat, lon, radiusInMeters)
                 .stream()

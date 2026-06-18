@@ -2,6 +2,7 @@ package com.sol.ecopulse.service.sensor;
 
 import com.sol.ecopulse.domain.sensor.Sensor;
 import com.sol.ecopulse.repository.sensor.SensorRepository;
+import com.sol.ecopulse.exception.NotFoundException;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -34,6 +35,11 @@ public class SensorService {
         return sensorRepository.save(sensor);
     }
 
+    public Sensor getSensorOrThrow(Long sensorId) {
+        return sensorRepository.findById(sensorId)
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 센서입니다. sensorId=" + sensorId));
+    }
+    
     // 주변 센서 검색하기 (반경은 킬로미터(km) 단위로 입력받아 미터로 변환)
     public List<Sensor> getNearbySensors(double latitude, double longitude, double radiusKm) {
         Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));

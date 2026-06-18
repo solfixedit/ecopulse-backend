@@ -3,6 +3,7 @@ package com.sol.ecopulse.service.telemetry;
 import com.sol.ecopulse.domain.telemetry.Telemetry;
 import com.sol.ecopulse.dto.TelemetryRequest;
 import com.sol.ecopulse.repository.telemetry.TelemetryRepository;
+import com.sol.ecopulse.service.sensor.SensorService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -18,16 +19,19 @@ import java.util.List;
 public class TelemetryService {
 
     private final TelemetryRepository telemetryRepository;
+    private final SensorService sensorService; // New field for SensorService
     // Shared factory for WGS84 geometry objects.
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
-    public TelemetryService(TelemetryRepository telemetryRepository) {
+    public TelemetryService(TelemetryRepository telemetryRepository, SensorService sensorService) {
         this.telemetryRepository = telemetryRepository;
+        this.sensorService = sensorService; // Initialize new SensorService
     }
 
     // Save telemetry with an optional PostGIS location.
     @Transactional
     public Telemetry saveTelemetry(TelemetryRequest request) {
+        sensorService.getSensorOrThrow(request.sensorId()); // New validation
         LocalDateTime requestTime = request.timestamp() != null ? request.timestamp() : LocalDateTime.now();
 
         // Build a JTS point from the incoming coordinates. Longitude is X, latitude is Y.

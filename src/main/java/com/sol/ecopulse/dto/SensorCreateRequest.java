@@ -2,24 +2,21 @@ package com.sol.ecopulse.dto;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 
-import java.time.LocalDateTime;
 
-public record TelemetryRequest(
-        Long sensorId,
-        @NotNull(message = "측정값은 필수입니다.")
-        Double value,
+public record SensorCreateRequest(
+        @NotBlank(message = "센서 이름은 필수입니다.")
+        String name,
 
-        LocalDateTime timestamp,
+        @NotBlank(message = "센서 타입은 필수입니다.")
+        String type,
 
-        @NotNull(message = "위도는 필수입니다.")
         @DecimalMin(value = "-90.0", message = "위도는 -90 이상이어야 합니다.")
         @DecimalMax(value = "90.0", message = "위도는 90 이하이어야 합니다.")
-        Double latitude,
+        double latitude,
 
-        @NotNull(message = "경도는 필수입니다.")
         @DecimalMin(value = "-180.0", message = "경도는 -180 이상이어야 합니다.")
         @DecimalMax(value = "180.0", message = "경도는 180 이하이어야 합니다.")
-        Double longitude
+        double longitude
 ) {}
