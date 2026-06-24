@@ -3,6 +3,8 @@ package com.sol.ecopulse.exception;
 import com.sol.ecopulse.dto.ErrorResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
@@ -18,6 +20,8 @@ import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException exception) {
@@ -90,6 +94,19 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleException(Exception exception) {
+        // 처리되지 않은 예외는 스택트레이스를 로깅하고, 내부 정보는 노출하지 않는다.
+        log.error("처리되지 않은 예외가 발생했습니다.", exception);
+
+        ErrorResponse response = ErrorResponse.of(
+                "INTERNAL_SERVER_ERROR",
+                "서버 내부 오류가 발생했습니다."
+        );
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
     private ErrorResponse.FieldErrorResponse toFieldErrorResponse(FieldError fieldError) {
