@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -77,6 +78,16 @@ class TelemetryControllerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
                 .andExpect(jsonPath("$.message").value("서버 내부 오류가 발생했습니다."));
+    }
+
+    @Test
+    @DisplayName("위도가 허용 범위를 벗어나면 400과 INVALID_REQUEST 코드를 반환한다")
+    void nearbyTelemetries_invalidLatitude_returnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/telemetries/nearby")
+                        .param("lat", "999")
+                        .param("lon", "127.0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
 
     @Test

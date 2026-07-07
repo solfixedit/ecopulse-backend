@@ -9,7 +9,6 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,7 +25,6 @@ public class TelemetryController {
     }
 
     // Create a telemetry reading for a sensor.
-    @Validated
     @PostMapping
     public ResponseEntity<TelemetryResponse> createTelemetry(@Valid @RequestBody TelemetryRequest request) {
         Telemetry savedTelemetry = telemetryService.saveTelemetry(request);
@@ -53,8 +51,16 @@ public class TelemetryController {
      */
     @GetMapping("/nearby")
     public ResponseEntity<List<TelemetryResponse>> getNearbyTelemetries(
-            @RequestParam("lat") double lat,
-            @RequestParam("lon") double lon,
+            @RequestParam("lat")
+            @DecimalMin(value = "-90.0", message = "위도는 -90 이상이어야 합니다.")
+            @DecimalMax(value = "90.0", message = "위도는 90 이하이어야 합니다.")
+            double lat,
+
+            @RequestParam("lon")
+            @DecimalMin(value = "-180.0", message = "경도는 -180 이상이어야 합니다.")
+            @DecimalMax(value = "180.0", message = "경도는 180 이하이어야 합니다.")
+            double lon,
+
             @RequestParam(value = "radius", defaultValue = "5000")
             @Positive(message = "반경은 양수여야 합니다.")
             double radiusInMeters
