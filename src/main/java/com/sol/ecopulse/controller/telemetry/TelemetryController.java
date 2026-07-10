@@ -31,6 +31,15 @@ public class TelemetryController {
         return ResponseEntity.ok(TelemetryResponse.from(savedTelemetry));
     }
 
+    // Bulk-ingest telemetry readings via a single batched insert (high-throughput path).
+    @PostMapping("/bulk")
+    public ResponseEntity<Void> createTelemetriesInBulk(
+            @RequestBody @Valid List<@Valid TelemetryRequest> requests
+    ) {
+        telemetryService.saveTelemetriesInBulk(requests);
+        return ResponseEntity.accepted().build();
+    }
+
     // Get telemetry history for a sensor.
     @GetMapping("/sensor/{sensorId}")
     public ResponseEntity<List<TelemetryResponse>> getTelemetryBySensor(@PathVariable Long sensorId) {

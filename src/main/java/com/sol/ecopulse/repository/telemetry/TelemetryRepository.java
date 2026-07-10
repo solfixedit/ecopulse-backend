@@ -15,13 +15,15 @@ public interface TelemetryRepository extends JpaRepository<Telemetry, Long> {
     // Uses the sensor_id and timestamp index to return the latest readings first.
     List<Telemetry> findBySensorIdOrderByTimestampDesc(Long sensorId);
     /**
-     * Finds telemetry records within the given radius using PostGIS.
+     * Finds telemetry records within the given radius (in meters) using PostGIS.
      *
-     * ST_DistanceSphere calculates the distance between two points in meters,
-     * taking the Earth's curvature into account.
+     * <p>Casting to {@code geography} makes ST_DWithin measure geodesic distance in
+     * meters and, crucially, lets the planner use the GiST index on
+     * {@code (location::geography)} (see SpatialIndexInitializer) instead of scanning
+     * every row — unlike a {@code ST_DistanceSphere(...) <= d} predicate.
      */
     @Query(value = "SELECT * FROM telemetries t " +
-            "WHERE ST_DistanceSphere(t.location, :center) <= :distanceInMeters " +
+            "WHERE ST_DWithin(CAST(t.location AS geography), CAST(:center AS geography), :distanceInMeters) " +
             "ORDER BY t.timestamp DESC",
             nativeQuery = true)
     List<Telemetry> findNearbyTelemetries(@Param("center") Point center,

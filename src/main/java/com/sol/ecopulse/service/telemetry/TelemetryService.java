@@ -2,6 +2,7 @@ package com.sol.ecopulse.service.telemetry;
 
 import com.sol.ecopulse.domain.telemetry.Telemetry;
 import com.sol.ecopulse.dto.TelemetryRequest;
+import com.sol.ecopulse.repository.telemetry.TelemetryBulkRepository;
 import com.sol.ecopulse.repository.telemetry.TelemetryRepository;
 import com.sol.ecopulse.service.sensor.SensorService;
 import org.locationtech.jts.geom.Coordinate;
@@ -19,12 +20,16 @@ import java.util.List;
 public class TelemetryService {
 
     private final TelemetryRepository telemetryRepository;
+    private final TelemetryBulkRepository telemetryBulkRepository; // High-throughput batch inserts
     private final SensorService sensorService; // New field for SensorService
     // Shared factory for WGS84 geometry objects.
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
-    public TelemetryService(TelemetryRepository telemetryRepository, SensorService sensorService) {
+    public TelemetryService(TelemetryRepository telemetryRepository,
+                            TelemetryBulkRepository telemetryBulkRepository,
+                            SensorService sensorService) {
         this.telemetryRepository = telemetryRepository;
+        this.telemetryBulkRepository = telemetryBulkRepository;
         this.sensorService = sensorService; // Initialize new SensorService
     }
 
@@ -32,22 +37,40 @@ public class TelemetryService {
     @Transactional
     public Telemetry saveTelemetry(TelemetryRequest request) {
         sensorService.getSensorOrThrow(request.sensorId()); // New validation
+        return telemetryRepository.save(toTelemetry(request));
+    }
+
+    /**
+     * Ingest many telemetry readings in a single batched insert.
+     *
+     * <p>Unlike {@link #saveTelemetry}, per-row sensor existence is intentionally not
+     * validated here — the whole point of the bulk path is to minimise database
+     * round-trips for high-frequency streams.
+     */
+    @Transactional
+    public void saveTelemetriesInBulk(List<TelemetryRequest> requests) {
+        List<Telemetry> telemetries = requests.stream()
+                .map(this::toTelemetry)
+                .toList();
+        telemetryBulkRepository.saveAllInBulk(telemetries);
+    }
+
+    // Map a request to an entity, defaulting the timestamp and building the PostGIS point
+    // (longitude is X, latitude is Y) when coordinates are present.
+    private Telemetry toTelemetry(TelemetryRequest request) {
         LocalDateTime requestTime = request.timestamp() != null ? request.timestamp() : LocalDateTime.now();
 
-        // Build a JTS point from the incoming coordinates. Longitude is X, latitude is Y.
         Point point = null;
         if (request.latitude() != null && request.longitude() != null) {
             point = geometryFactory.createPoint(new Coordinate(request.longitude(), request.latitude()));
         }
 
-        Telemetry telemetry = Telemetry.builder()
+        return Telemetry.builder()
                 .sensorId(request.sensorId())
                 .value(request.value())
                 .timestamp(requestTime)
                 .location(point)
                 .build();
-
-        return telemetryRepository.save(telemetry);
     }
 
     // Fetch telemetry history for a sensor, ordered from newest to oldest.

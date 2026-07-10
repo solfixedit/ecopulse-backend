@@ -14,7 +14,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -78,6 +80,24 @@ class TelemetryControllerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
                 .andExpect(jsonPath("$.message").value("서버 내부 오류가 발생했습니다."));
+    }
+
+    @Test
+    @DisplayName("bulk: 유효한 목록이면 202를 반환하고 배치 저장에 위임한다")
+    void createTelemetriesInBulk_valid_returnsAccepted() throws Exception {
+        String body = """
+                [
+                  { "sensorId": 1, "value": 10.0, "latitude": 37.5, "longitude": 127.0 },
+                  { "sensorId": 2, "value": 20.0, "latitude": 37.6, "longitude": 127.1 }
+                ]
+                """;
+
+        mockMvc.perform(post("/api/telemetries/bulk")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isAccepted());
+
+        verify(telemetryService).saveTelemetriesInBulk(anyList());
     }
 
     @Test

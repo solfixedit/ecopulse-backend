@@ -3,6 +3,7 @@ package com.sol.ecopulse.service.telemetry;
 import com.sol.ecopulse.domain.telemetry.Telemetry;
 import com.sol.ecopulse.dto.TelemetryRequest;
 import com.sol.ecopulse.exception.NotFoundException;
+import com.sol.ecopulse.repository.telemetry.TelemetryBulkRepository;
 import com.sol.ecopulse.repository.telemetry.TelemetryRepository;
 import com.sol.ecopulse.service.sensor.SensorService;
 import org.junit.jupiter.api.DisplayName;
@@ -23,12 +24,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class TelemetryServiceTest {
 
     @Mock
     private TelemetryRepository telemetryRepository;
+
+    @Mock
+    private TelemetryBulkRepository telemetryBulkRepository;
 
     @Mock
     private SensorService sensorService;
@@ -92,6 +97,37 @@ class TelemetryServiceTest {
         Telemetry saved = captor.getValue();
         assertThat(saved.getTimestamp()).isNotNull();
         assertThat(saved.getLocation()).isNull();
+    }
+
+    @Test
+    @DisplayName("saveTelemetriesInBulk: 요청들을 엔티티로 매핑해 배치 저장에 위임하고, 센서 검증은 하지 않는다")
+    @SuppressWarnings("unchecked")
+    void saveTelemetriesInBulk_mapsAndDelegates() {
+        List<TelemetryRequest> requests = List.of(
+                new TelemetryRequest(1L, 10.0, LocalDateTime.of(2026, 1, 1, 0, 0), 37.5, 127.0),
+                new TelemetryRequest(2L, 20.0, null, null, null) // 좌표/타임스탬프 없음
+        );
+
+        telemetryService.saveTelemetriesInBulk(requests);
+
+        ArgumentCaptor<List<Telemetry>> captor = ArgumentCaptor.forClass(List.class);
+        verify(telemetryBulkRepository).saveAllInBulk(captor.capture());
+
+        List<Telemetry> saved = captor.getValue();
+        assertThat(saved).hasSize(2);
+
+        // 좌표가 있으면 Point(X=경도, Y=위도)로 매핑
+        assertThat(saved.get(0).getLocation()).isNotNull();
+        assertThat(saved.get(0).getLocation().getX()).isEqualTo(127.0);
+        assertThat(saved.get(0).getLocation().getY()).isEqualTo(37.5);
+        assertThat(saved.get(0).getTimestamp()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
+
+        // 좌표 없으면 location은 null, 타임스탬프 없으면 기본값으로 채움
+        assertThat(saved.get(1).getLocation()).isNull();
+        assertThat(saved.get(1).getTimestamp()).isNotNull();
+
+        // 벌크 경로는 센서 존재 검증을 하지 않는다
+        verifyNoInteractions(sensorService);
     }
 
     @Test
