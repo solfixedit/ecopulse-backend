@@ -2,9 +2,11 @@ package com.sol.ecopulse.service.telemetry;
 
 import com.sol.ecopulse.domain.telemetry.Telemetry;
 import com.sol.ecopulse.dto.TelemetryRequest;
+import com.sol.ecopulse.dto.TelemetryStatsResponse;
 import com.sol.ecopulse.exception.NotFoundException;
 import com.sol.ecopulse.repository.telemetry.TelemetryBulkRepository;
 import com.sol.ecopulse.repository.telemetry.TelemetryRepository;
+import com.sol.ecopulse.repository.telemetry.TelemetryStats;
 import com.sol.ecopulse.service.sensor.SensorService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -144,6 +147,44 @@ class TelemetryServiceTest {
         Page<Telemetry> result = telemetryService.getTelemetryHistory(1L, pageable);
 
         assertThat(result).isSameAs(history);
+    }
+
+    @Test
+    @DisplayName("getTelemetryStats: 센서 검증 후 기간 집계를 응답 DTO로 매핑해 반환한다")
+    void getTelemetryStats_returnsMappedStats() {
+        LocalDateTime from = LocalDateTime.of(2026, 1, 1, 0, 0);
+        LocalDateTime to = LocalDateTime.of(2026, 1, 2, 0, 0);
+
+        TelemetryStats projection = mock(TelemetryStats.class);
+        given(projection.getTotal()).willReturn(3L);
+        given(projection.getAverage()).willReturn(20.0);
+        given(projection.getMinimum()).willReturn(10.0);
+        given(projection.getMaximum()).willReturn(30.0);
+        given(telemetryRepository.aggregateStats(1L, from, to)).willReturn(projection);
+
+        TelemetryStatsResponse result = telemetryService.getTelemetryStats(1L, from, to);
+
+        verify(sensorService).getSensorOrThrow(1L);
+        assertThat(result.sensorId()).isEqualTo(1L);
+        assertThat(result.from()).isEqualTo(from);
+        assertThat(result.to()).isEqualTo(to);
+        assertThat(result.count()).isEqualTo(3L);
+        assertThat(result.average()).isEqualTo(20.0);
+        assertThat(result.minimum()).isEqualTo(10.0);
+        assertThat(result.maximum()).isEqualTo(30.0);
+    }
+
+    @Test
+    @DisplayName("getTelemetryStats: from이 to보다 이후면 IllegalArgumentException을 던지고 집계하지 않는다")
+    void getTelemetryStats_fromAfterTo_throws() {
+        LocalDateTime from = LocalDateTime.of(2026, 1, 2, 0, 0);
+        LocalDateTime to = LocalDateTime.of(2026, 1, 1, 0, 0);
+
+        assertThatThrownBy(() -> telemetryService.getTelemetryStats(1L, from, to))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(telemetryRepository, never()).aggregateStats(any(), any(), any());
+        verifyNoInteractions(sensorService);
     }
 
     @Test

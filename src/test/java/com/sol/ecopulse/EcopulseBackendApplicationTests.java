@@ -1,10 +1,13 @@
 package com.sol.ecopulse;
 
+import com.sol.ecopulse.repository.AbstractPostgisIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class EcopulseBackendApplicationTests {
+/**
+ * Smoke test: the full application context boots against a real PostGIS container.
+ * Inherits the Testcontainers setup so it does not depend on a locally-running database.
+ */
+class EcopulseBackendApplicationTests extends AbstractPostgisIntegrationTest {
 
 	@Test
 	void contextLoads() {

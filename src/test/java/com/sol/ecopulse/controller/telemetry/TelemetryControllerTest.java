@@ -1,6 +1,7 @@
 package com.sol.ecopulse.controller.telemetry;
 
 import com.sol.ecopulse.domain.telemetry.Telemetry;
+import com.sol.ecopulse.dto.TelemetryStatsResponse;
 import com.sol.ecopulse.exception.NotFoundException;
 import com.sol.ecopulse.service.telemetry.TelemetryService;
 import org.junit.jupiter.api.DisplayName;
@@ -125,6 +126,26 @@ class TelemetryControllerTest {
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(20))
                 .andExpect(jsonPath("$.last").value(true));
+    }
+
+    @Test
+    @DisplayName("stats: 기간 집계를 200과 함께 반환한다")
+    void getTelemetryStats_returnsStats() throws Exception {
+        TelemetryStatsResponse stats = new TelemetryStatsResponse(
+                9L,
+                LocalDateTime.of(2026, 1, 1, 0, 0),
+                LocalDateTime.of(2026, 1, 2, 0, 0),
+                3L, 20.0, 10.0, 30.0);
+        given(telemetryService.getTelemetryStats(eq(9L), any(), any())).willReturn(stats);
+
+        mockMvc.perform(get("/api/telemetries/sensor/9/stats")
+                        .param("from", "2026-01-01T00:00:00")
+                        .param("to", "2026-01-02T00:00:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.count").value(3))
+                .andExpect(jsonPath("$.average").value(20.0))
+                .andExpect(jsonPath("$.minimum").value(10.0))
+                .andExpect(jsonPath("$.maximum").value(30.0));
     }
 
     @Test

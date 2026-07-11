@@ -9,12 +9,15 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Positive;
 import com.sol.ecopulse.dto.PageResponse;
+import com.sol.ecopulse.dto.TelemetryStatsResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -53,6 +56,16 @@ public class TelemetryController {
                 .map(TelemetryResponse::from);
 
         return ResponseEntity.ok(PageResponse.from(page));
+    }
+
+    // Aggregate a sensor's readings over a time window: /sensor/{id}/stats?from=&to= (ISO date-time).
+    @GetMapping("/sensor/{sensorId}/stats")
+    public ResponseEntity<TelemetryStatsResponse> getTelemetryStats(
+            @PathVariable Long sensorId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
+    ) {
+        return ResponseEntity.ok(telemetryService.getTelemetryStats(sensorId, from, to));
     }
 
     /**

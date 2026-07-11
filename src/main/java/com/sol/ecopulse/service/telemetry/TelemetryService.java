@@ -2,8 +2,10 @@ package com.sol.ecopulse.service.telemetry;
 
 import com.sol.ecopulse.domain.telemetry.Telemetry;
 import com.sol.ecopulse.dto.TelemetryRequest;
+import com.sol.ecopulse.dto.TelemetryStatsResponse;
 import com.sol.ecopulse.repository.telemetry.TelemetryBulkRepository;
 import com.sol.ecopulse.repository.telemetry.TelemetryRepository;
+import com.sol.ecopulse.repository.telemetry.TelemetryStats;
 import com.sol.ecopulse.service.sensor.SensorService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -78,6 +80,17 @@ public class TelemetryService {
     // Fetch a page of telemetry history for a sensor, ordered from newest to oldest.
     public Page<Telemetry> getTelemetryHistory(Long sensorId, Pageable pageable) {
         return telemetryRepository.findBySensorIdOrderByTimestampDesc(sensorId, pageable);
+    }
+
+    // Aggregate a sensor's readings (count/avg/min/max) over a [from, to] window.
+    public TelemetryStatsResponse getTelemetryStats(Long sensorId, LocalDateTime from, LocalDateTime to) {
+        if (from.isAfter(to)) {
+            throw new IllegalArgumentException("조회 시작 시각(from)은 종료 시각(to)보다 이후일 수 없습니다.");
+        }
+        sensorService.getSensorOrThrow(sensorId);
+
+        TelemetryStats stats = telemetryRepository.aggregateStats(sensorId, from, to);
+        return TelemetryStatsResponse.of(sensorId, from, to, stats);
     }
 
     /**

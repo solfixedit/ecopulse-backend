@@ -19,7 +19,7 @@ import org.testcontainers.utility.DockerImageName;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-abstract class AbstractPostgisIntegrationTest {
+public abstract class AbstractPostgisIntegrationTest {
 
     // PostGIS image (declared linux/amd64 in docker-compose). asCompatibleSubstituteFor lets
     // Testcontainers treat it as a drop-in "postgres" container.

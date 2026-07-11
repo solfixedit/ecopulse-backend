@@ -3,6 +3,7 @@ package com.sol.ecopulse.repository;
 import com.sol.ecopulse.domain.telemetry.Telemetry;
 import com.sol.ecopulse.repository.telemetry.TelemetryBulkRepository;
 import com.sol.ecopulse.repository.telemetry.TelemetryRepository;
+import com.sol.ecopulse.repository.telemetry.TelemetryStats;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
@@ -98,6 +99,39 @@ class TelemetryRepositoryIntegrationTest extends AbstractPostgisIntegrationTest 
         assertThat(result)
                 .extracting(Telemetry::getValue)
                 .containsExactly(100.0);
+    }
+
+    @Test
+    @DisplayName("aggregateStats: 기간·센서로 필터해 count/avg/min/max를 집계한다")
+    void aggregateStats_computesOverWindowAndSensor() {
+        LocalDateTime base = LocalDateTime.of(2026, 1, 1, 0, 0);
+        telemetryRepository.save(telemetry(1L, 10.0, base.plusHours(1), null));
+        telemetryRepository.save(telemetry(1L, 30.0, base.plusHours(2), null));
+        telemetryRepository.save(telemetry(1L, 20.0, base.plusHours(3), null));
+        telemetryRepository.save(telemetry(1L, 999.0, base.plusHours(10), null)); // 기간 밖 — 제외
+        telemetryRepository.save(telemetry(2L, 5.0, base.plusHours(1), null));     // 다른 센서 — 제외
+        telemetryRepository.flush();
+
+        TelemetryStats stats = telemetryRepository.aggregateStats(1L, base, base.plusHours(5));
+
+        assertThat(stats.getTotal()).isEqualTo(3);
+        assertThat(stats.getAverage()).isEqualTo(20.0); // (10+30+20)/3
+        assertThat(stats.getMinimum()).isEqualTo(10.0);
+        assertThat(stats.getMaximum()).isEqualTo(30.0);
+    }
+
+    @Test
+    @DisplayName("aggregateStats: 기간 내 데이터가 없으면 count는 0, avg/min/max는 null")
+    void aggregateStats_emptyWindow_returnsZeroAndNulls() {
+        TelemetryStats stats = telemetryRepository.aggregateStats(
+                1L,
+                LocalDateTime.of(2030, 1, 1, 0, 0),
+                LocalDateTime.of(2030, 1, 2, 0, 0));
+
+        assertThat(stats.getTotal()).isZero();
+        assertThat(stats.getAverage()).isNull();
+        assertThat(stats.getMinimum()).isNull();
+        assertThat(stats.getMaximum()).isNull();
     }
 
     private Telemetry telemetry(Long sensorId, double value, LocalDateTime timestamp, Point location) {

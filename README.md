@@ -20,8 +20,8 @@ A backend system for ingesting real-time environmental IoT sensor data and servi
 
 ### 3. Time-Series Reads (Composite Index + Pagination)
 - **Problem:** Aggregating or listing a sensor's history over a large time range can scan unbounded rows and load them all into memory.
-- **Approach:** A **composite index** on `(sensor_id, timestamp)` backs newest-first lookups, and history reads are **paginated** with Spring Data `Pageable`/`Page` (`?page=&size=`), returned in a stable `PageResponse` envelope.
-- Endpoint: `GET /api/telemetries/sensor/{sensorId}?page=&size=`.
+- **Approach:** A **composite index** on `(sensor_id, timestamp)` backs newest-first lookups, and history reads are **paginated** with Spring Data `Pageable`/`Page` (`?page=&size=`), returned in a stable `PageResponse` envelope. The same index also backs a windowed **aggregation** endpoint (`count`/`avg`/`min`/`max` over a `[from, to]` range).
+- Endpoints: `GET /api/telemetries/sensor/{sensorId}?page=&size=`, `GET /api/telemetries/sensor/{sensorId}/stats?from=&to=`.
 
 ### 4. API Validation & Error Handling
 - Request payloads and query parameters are validated with Jakarta Bean Validation (`@NotNull`, `@DecimalMin/Max`, `@Positive`, coordinate ranges).
@@ -49,6 +49,7 @@ A backend system for ingesting real-time environmental IoT sensor data and servi
 | `POST` | `/api/telemetries` | Record a single telemetry reading |
 | `POST` | `/api/telemetries/bulk` | Batch-ingest telemetry readings |
 | `GET`  | `/api/telemetries/sensor/{sensorId}?page=&size=` | Paginated history (newest first) |
+| `GET`  | `/api/telemetries/sensor/{sensorId}/stats?from=&to=` | Windowed aggregate (count / avg / min / max) |
 | `GET`  | `/api/telemetries/nearby?lat=&lon=&radius=` | Telemetry within a radius (meters) |
 
 ---
