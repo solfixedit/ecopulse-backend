@@ -9,6 +9,8 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,9 +75,9 @@ public class TelemetryService {
                 .build();
     }
 
-    // Fetch telemetry history for a sensor, ordered from newest to oldest.
-    public List<Telemetry> getTelemetryHistory(Long sensorId) {
-        return telemetryRepository.findBySensorIdOrderByTimestampDesc(sensorId);
+    // Fetch a page of telemetry history for a sensor, ordered from newest to oldest.
+    public Page<Telemetry> getTelemetryHistory(Long sensorId, Pageable pageable) {
+        return telemetryRepository.findBySensorIdOrderByTimestampDesc(sensorId, pageable);
     }
 
     /**

@@ -8,11 +8,14 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Positive;
+import com.sol.ecopulse.dto.PageResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/telemetries")
@@ -40,16 +43,16 @@ public class TelemetryController {
         return ResponseEntity.accepted().build();
     }
 
-    // Get telemetry history for a sensor.
+    // Get a page of telemetry history for a sensor (newest first). Controlled via ?page=&size=.
     @GetMapping("/sensor/{sensorId}")
-    public ResponseEntity<List<TelemetryResponse>> getTelemetryBySensor(@PathVariable Long sensorId) {
-        List<Telemetry> telemetries = telemetryService.getTelemetryHistory(sensorId);
+    public ResponseEntity<PageResponse<TelemetryResponse>> getTelemetryBySensor(
+            @PathVariable Long sensorId,
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
+        Page<TelemetryResponse> page = telemetryService.getTelemetryHistory(sensorId, pageable)
+                .map(TelemetryResponse::from);
 
-        List<TelemetryResponse> responseList = telemetries.stream()
-                .map(TelemetryResponse::from)
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responseList);
+        return ResponseEntity.ok(PageResponse.from(page));
     }
 
     /**

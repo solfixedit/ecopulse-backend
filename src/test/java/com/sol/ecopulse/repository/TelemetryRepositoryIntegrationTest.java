@@ -10,6 +10,8 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,11 +38,31 @@ class TelemetryRepositoryIntegrationTest extends AbstractPostgisIntegrationTest 
         telemetryRepository.save(telemetry(2L, 99.0, base, null));             // 다른 센서 — 제외돼야 함
         telemetryRepository.flush();
 
-        List<Telemetry> result = telemetryRepository.findBySensorIdOrderByTimestampDesc(1L);
+        Page<Telemetry> result = telemetryRepository.findBySensorIdOrderByTimestampDesc(1L, PageRequest.of(0, 10));
 
-        assertThat(result)
+        assertThat(result.getTotalElements()).isEqualTo(3);
+        assertThat(result.getContent())
                 .extracting(Telemetry::getValue)
                 .containsExactly(20.0, 15.0, 10.0);
+    }
+
+    @Test
+    @DisplayName("findBySensorIdOrderByTimestampDesc: 페이지 크기만큼만 최신순으로 잘라 반환한다")
+    void findBySensorId_paginatesNewestFirst() {
+        LocalDateTime base = LocalDateTime.of(2026, 1, 1, 0, 0);
+        for (int i = 0; i < 5; i++) {
+            telemetryRepository.save(telemetry(1L, (double) i, base.plusHours(i), null)); // i시간 뒤 = 값 i
+        }
+        telemetryRepository.flush();
+
+        Page<Telemetry> firstPage = telemetryRepository.findBySensorIdOrderByTimestampDesc(1L, PageRequest.of(0, 2));
+
+        assertThat(firstPage.getTotalElements()).isEqualTo(5);
+        assertThat(firstPage.getTotalPages()).isEqualTo(3);
+        assertThat(firstPage.isLast()).isFalse();
+        assertThat(firstPage.getContent())
+                .extracting(Telemetry::getValue)
+                .containsExactly(4.0, 3.0); // 최신 2건
     }
 
     @Test

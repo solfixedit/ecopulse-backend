@@ -8,13 +8,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -98,6 +104,27 @@ class TelemetryControllerTest {
                 .andExpect(status().isAccepted());
 
         verify(telemetryService).saveTelemetriesInBulk(anyList());
+    }
+
+    @Test
+    @DisplayName("이력 조회: content와 페이지 메타를 담은 PageResponse를 반환한다")
+    void getTelemetryBySensor_returnsPageResponse() throws Exception {
+        Telemetry telemetry = Telemetry.builder()
+                .id(1L)
+                .sensorId(9L)
+                .value(42.0)
+                .timestamp(LocalDateTime.now())
+                .build();
+        Page<Telemetry> page = new PageImpl<>(List.of(telemetry), PageRequest.of(0, 20), 1);
+        given(telemetryService.getTelemetryHistory(eq(9L), any(Pageable.class))).willReturn(page);
+
+        mockMvc.perform(get("/api/telemetries/sensor/9"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].value").value(42.0))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.last").value(true));
     }
 
     @Test

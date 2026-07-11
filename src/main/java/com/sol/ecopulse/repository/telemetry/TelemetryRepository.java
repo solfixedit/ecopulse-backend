@@ -2,6 +2,8 @@ package com.sol.ecopulse.repository.telemetry;
 
 import com.sol.ecopulse.domain.telemetry.Telemetry;
 import org.locationtech.jts.geom.Point;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,8 +14,9 @@ import java.util.List;
 @Repository
 public interface TelemetryRepository extends JpaRepository<Telemetry, Long> {
 
-    // Uses the sensor_id and timestamp index to return the latest readings first.
-    List<Telemetry> findBySensorIdOrderByTimestampDesc(Long sensorId);
+    // Uses the sensor_id + timestamp composite index to return the latest readings first,
+    // paginated to avoid loading an unbounded time-series into memory.
+    Page<Telemetry> findBySensorIdOrderByTimestampDesc(Long sensorId, Pageable pageable);
     /**
      * Finds telemetry records within the given radius (in meters) using PostGIS.
      *

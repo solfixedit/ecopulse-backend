@@ -1,32 +1,55 @@
-# EcoPulse: Real-Time IoT Telemetry & Geospatial Query Optimization API 🌍
+# EcoPulse: Real-Time IoT Telemetry & Geospatial Query API 🌍
 
-A high-performance, scalable backend system engineered to process high-concurrency real-time environmental IoT sensor data and optimize complex geospatial (GIS) queries. This project serves as a technical demonstration of architecting robust data pipelines, bulk insertion strategies, and database performance tuning under heavy write/read loads.
-
----
-
-## 🚀 Key Engineering Challenges & Solutions
-
-### 1. High-Throughput Real-Time Data Ingestion (Bulk Insert Optimization)
-- **Challenge:** Traditional JPA `save()` or `saveAll()` methods introduce severe network overhead and database locks when thousands of IoT sensors stream telemetry data concurrently every second. This happens because batching is disabled when using `@GeneratedValue(strategy = GenerationType.IDENTITY)`.
-- **Solution:** Implemented a high-efficiency ingestion pipeline using Spring `JdbcTemplate` to execute true **Bulk Inserts** via `batchUpdate()`. This reduced database round-trips and increased write throughput by over 40%, ensuring steady ingestion under high-concurrency scenarios.
-
-### 2. High-Performance Geospatial Queries (PostGIS & Spatial Indexing)
-- **Challenge:** Querying historical environmental metrics within a specific geographical boundary (e.g., finding at-risk sensors within a 5km radius) becomes extremely slow as data accumulates into millions of rows.
-- **Solution:** Leveraged **PostGIS** spatial functions (`ST_DWithin`, `ST_MakePoint`) instead of executing heavy arithmetic lat/lng calculations on the application layer. Generated a **GiST (Generalized Search Tree) Index** on the geometry columns to achieve sub-millisecond query response times for proximity-based disaster risk assessments.
-
-### 3. Read Performance Optimization for Time-Series Aggregation
-- **Challenge:** Aggregating sensor metrics over massive ranges of time-series data caused CPU bottlenecks and query timeouts.
-- **Solution:** Designed a **Composite Index** combining `sensor_id` and `timestamp`. Optimized data retrieval utilizing **QueryDSL** for clean, dynamic, type-safe queries, applying efficient covering indexes and pagination mechanisms to prevent full table scans.
+A backend system for ingesting real-time environmental IoT sensor data and serving geospatial (GIS) proximity queries. The project demonstrates high-throughput bulk ingestion, PostGIS spatial indexing, and time-series read patterns on top of Spring Boot and PostgreSQL/PostGIS.
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## 🚀 Key Engineering Areas
 
-- **Language & Framework:** Java 17 / Spring Boot 3.x
-- **Database & GIS:** PostgreSQL / PostGIS 
-- **Data Access:** Spring Data JPA / QueryDSL / Spring JdbcTemplate
-- **Build & Dependency Tool:** Gradle
-- **Containerization:** Docker / Docker-compose (Local DB Setup)
+### 1. High-Throughput Data Ingestion (Bulk Insert)
+- **Problem:** With `@GeneratedValue(strategy = GenerationType.IDENTITY)`, Hibernate cannot batch JDBC inserts, so streaming thousands of telemetry rows through `save()`/`saveAll()` incurs one round-trip per row.
+- **Approach:** A dedicated `TelemetryBulkRepository` uses Spring `JdbcTemplate.batchUpdate()` to insert in chunks of 1,000, bypassing the per-row round-trips. The PostGIS `location` column is populated in-SQL via `ST_SetSRID(ST_MakePoint(lon, lat), 4326)`, so bulk-inserted rows are immediately searchable by the spatial queries.
+- Exposed at `POST /api/telemetries/bulk`.
+
+> **Note:** No throughput benchmark is committed to this repo yet — the bulk path is a structural optimization, not a measured figure. A JMH/gatling benchmark would be a good future addition.
+
+### 2. Geospatial Proximity Queries (PostGIS + GiST)
+- **Problem:** Radius search (e.g. "sensors within 5 km") degrades to a full scan when the predicate computes a distance for every row.
+- **Approach:** Queries use `ST_DWithin(location::geography, :center::geography, :meters)` so the distance is geodesic (meters) **and** index-eligible. A **GiST index** on `(location::geography)` is created idempotently at startup by `SpatialIndexInitializer` — JPA's `@Index` cannot express an index method (GiST), so it is issued as raw DDL (`CREATE INDEX IF NOT EXISTS ... USING gist (...)`).
+- Endpoints: `GET /api/sensors/nearby`, `GET /api/telemetries/nearby`.
+
+### 3. Time-Series Reads (Composite Index + Pagination)
+- **Problem:** Aggregating or listing a sensor's history over a large time range can scan unbounded rows and load them all into memory.
+- **Approach:** A **composite index** on `(sensor_id, timestamp)` backs newest-first lookups, and history reads are **paginated** with Spring Data `Pageable`/`Page` (`?page=&size=`), returned in a stable `PageResponse` envelope.
+- Endpoint: `GET /api/telemetries/sensor/{sensorId}?page=&size=`.
+
+### 4. API Validation & Error Handling
+- Request payloads and query parameters are validated with Jakarta Bean Validation (`@NotNull`, `@DecimalMin/Max`, `@Positive`, coordinate ranges).
+- A `@RestControllerAdvice` (`GlobalExceptionHandler`) maps validation failures, not-found, and unexpected errors to a consistent `ErrorResponse` (code, message, field errors, timestamp), including a catch-all `500` that logs the stack trace without leaking internals.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Language & Framework:** Java 17 / Spring Boot 4.0.x
+- **Database & GIS:** PostgreSQL / PostGIS (Hibernate Spatial + JTS)
+- **Data Access:** Spring Data JPA + Spring `JdbcTemplate` (bulk insert)
+- **Build:** Gradle
+- **Containerization:** Docker / Docker Compose (local DB)
+- **Testing:** JUnit 5, Mockito, MockMvc (`@WebMvcTest`), Testcontainers (PostGIS)
+
+---
+
+## 🔌 API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/sensors` | Register a sensor (`name`, `type`, `latitude`, `longitude`) |
+| `GET`  | `/api/sensors/nearby?latitude=&longitude=&radiusKm=` | Sensors within a radius (km) |
+| `POST` | `/api/telemetries` | Record a single telemetry reading |
+| `POST` | `/api/telemetries/bulk` | Batch-ingest telemetry readings |
+| `GET`  | `/api/telemetries/sensor/{sensorId}?page=&size=` | Paginated history (newest first) |
+| `GET`  | `/api/telemetries/nearby?lat=&lon=&radius=` | Telemetry within a radius (meters) |
 
 ---
 
@@ -35,16 +58,30 @@ A high-performance, scalable backend system engineered to process high-concurren
 ```text
 ecopulse-backend/
 ├── src/main/java/com/sol/ecopulse/
-│   ├── config/                 # Database, Spatial (PostGIS), and QueryDSL configurations
+│   ├── config/                 # SpatialConfig (JTS Jackson), SpatialIndexInitializer (GiST), DataInitializer (seed)
+│   ├── controller/             # sensor / telemetry REST controllers
 │   ├── domain/
-│   │   ├── sensor/             # Sensor Metadata (ID, Type, Location - Geometry Type)
-│   │   └── telemetry/          # Time-series Telemetry Data (Metrics, Timestamp)
-│   ├── repository/             # Custom Repositories & QueryDSL Implementations
-│   ├── service/                # Business Logic (Bulk Processing, Geospatial Filtering)
-│   └── controller/             # RESTful APIs for Data Ingestion & Analytics
+│   │   ├── sensor/             # Sensor entity (id, name, type, geometry location)
+│   │   └── telemetry/          # Telemetry entity (sensorId, value, timestamp, geometry location)
+│   ├── dto/                    # request/response records, ErrorResponse, PageResponse
+│   ├── exception/              # GlobalExceptionHandler, NotFoundException
+│   ├── repository/
+│   │   ├── sensor/             # SensorRepository (Spring Data JPA)
+│   │   └── telemetry/          # TelemetryRepository + JdbcTemplate bulk insert
+│   └── service/                # sensor / telemetry business logic
 └── src/main/resources/
     └── application.yml
 ```
+
+---
+
+## ✅ Testing
+
+Run the suite with `./gradlew test`. Coverage spans three levels:
+
+- **Unit (Mockito):** service logic — coordinate mapping, timestamp defaults, not-found propagation, bulk delegation.
+- **Web slice (`@WebMvcTest`):** controller validation, error responses, pagination envelope.
+- **Integration (`@SpringBootTest` + Testcontainers):** the PostGIS native queries (`ST_DWithin`), bulk insert persisting geometry, and DB-level pagination run against a real `postgis/postgis` container (started once per JVM).
 
 ---
 
@@ -64,3 +101,4 @@ ecopulse-backend/
 └── ecopulse-pipeline/     # Python Data Pipeline Module (Temporal.io Worker)
     ├── pipeline.py        # Workflow & Activity definitions for data streaming
     └── run.py             # Worker initialization & Workflow execution trigger
+```

@@ -14,6 +14,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -131,12 +135,13 @@ class TelemetryServiceTest {
     }
 
     @Test
-    @DisplayName("getTelemetryHistory: 레포지토리의 최신순 조회 결과를 그대로 반환한다")
+    @DisplayName("getTelemetryHistory: 페이지 요청을 그대로 전달하고 레포지토리 결과 페이지를 반환한다")
     void getTelemetryHistory_delegatesToRepository() {
-        List<Telemetry> history = List.of(Telemetry.builder().sensorId(1L).build());
-        given(telemetryRepository.findBySensorIdOrderByTimestampDesc(1L)).willReturn(history);
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Telemetry> history = new PageImpl<>(List.of(Telemetry.builder().sensorId(1L).build()));
+        given(telemetryRepository.findBySensorIdOrderByTimestampDesc(1L, pageable)).willReturn(history);
 
-        List<Telemetry> result = telemetryService.getTelemetryHistory(1L);
+        Page<Telemetry> result = telemetryService.getTelemetryHistory(1L, pageable);
 
         assertThat(result).isSameAs(history);
     }
